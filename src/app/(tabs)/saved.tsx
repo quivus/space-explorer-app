@@ -32,18 +32,6 @@ const SavedHeader = memo(function SavedHeader({
 
   return (
     <View>
-      <View style={{ paddingRight: 36 }}>
-        <Type variant="micro" color={colors.gold}>
-          Favorites
-        </Type>
-        <Type variant="headline" style={{ marginTop: 10 }}>
-          Nights you held onto.
-        </Type>
-      </View>
-      <Type variant="body" style={{ marginTop: 10, marginBottom: 22 }}>
-        Kept plates live on this device for the session. Open one to share or save the still.
-      </Type>
-
       {error ? (
         <View style={[styles.error, { backgroundColor: colors.panel, borderColor: colors.hairline }]}>
           <Type variant="micro" color={colors.spark} style={{ flex: 1 }}>
@@ -82,16 +70,14 @@ const SavedEmpty = memo(function SavedEmpty() {
 
 export default function SavedScreen() {
   const { items, error, canReset, retry, reset } = useFavorites();
-
   const header = useMemo(
     () => <SavedHeader error={error} canReset={canReset} retry={retry} reset={reset} />,
     [error, canReset, retry, reset],
   );
 
-  const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<SpaceItem>) => <SpaceCard item={item} />,
-    [],
-  );
+  const renderItem = useCallback(({ item }: ListRenderItemInfo<SpaceItem>) => {
+    return <SpaceCard item={item} layout="plate" />;
+  }, []);
 
   return (
     <Screen hasSky={false}>
@@ -120,8 +106,20 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 12,
   },
+  title: {
+    textAlign: 'center',
+    marginBottom: 22,
+  },
   separator: {
-    height: 12,
+    height: 22,
+  },
+  columns: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  col: {
+    flex: 1,
   },
   emptyBox: {
     borderWidth: 1,

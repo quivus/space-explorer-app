@@ -2,6 +2,7 @@ import { SpaceGrotesk_300Light, SpaceGrotesk_400Regular, SpaceGrotesk_500Medium,
 import { ApodProvider } from '@/context/ApodContext';
 import { FavoritesProvider } from '@/context/FavoritesContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
+import { SavedFlash } from '@/components/ui/SavedFlash';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -46,16 +47,20 @@ function ThemedStack() {
   return (
     <>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+      <SavedFlash />
       <Stack
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.void },
           animation: 'fade',
+          animationDuration: 140,
+          gestureEnabled: true,
         }}
       >
         <Stack.Screen name="index" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="details/[id]" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+        <Stack.Screen name="details/[id]" options={{ animation: 'fade', animationDuration: 150 }} />
+        <Stack.Screen name="planet/[name]" options={{ animation: 'fade', animationDuration: 150 }} />
       </Stack>
     </>
   );

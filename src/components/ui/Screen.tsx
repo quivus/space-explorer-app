@@ -1,10 +1,12 @@
 import { SettingsButton } from '@/components/ui/SettingsButton';
+import { Image } from 'expo-image';
 import { StarField } from '@/components/ui/StarField';
 import { useTheme } from '@/context/ThemeContext';
 import { layout } from '@/theme';
+import { router, useIsFocused } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ReactNode } from 'react';
-import { Platform, ScrollView, StyleSheet, View, type ScrollViewProps, type ViewStyle } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View, type ScrollViewProps, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type ScreenProps = {
@@ -14,20 +16,21 @@ type ScreenProps = {
   tabInset?: boolean;
   settings?: boolean;
   hasSky?: boolean;
+  meteors?: boolean;
   refreshControl?: ScrollViewProps['refreshControl'];
   contentContainerStyle?: ScrollViewProps['contentContainerStyle'];
   style?: ViewStyle;
+  backdrop?: ReactNode;
+  logo?: boolean;
 };
 
-export function SkyBackground() {
+export function SkyBackground({ meteors = true }: { meteors?: boolean }) {
   const { colors } = useTheme();
 
   return (
     <View pointerEvents="none" style={[styles.sky, { backgroundColor: colors.void }]}>
       <LinearGradient colors={[colors.sky[0], colors.sky[1], colors.sky[2]]} style={StyleSheet.absoluteFill} />
-      <View style={[styles.nebulaA, { backgroundColor: colors.nebulaA }]} />
-      <View style={[styles.nebulaB, { backgroundColor: colors.nebulaB }]} />
-      <StarField />
+      <StarField meteors={meteors} />
     </View>
   );
 }
@@ -39,25 +42,54 @@ export function Screen({
   tabInset = true,
   settings = true,
   hasSky = true,
+  meteors = true,
   refreshControl,
   contentContainerStyle,
   style,
+  backdrop,
+  logo = true,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const focused = useIsFocused();
   const bottomGap = (tabInset ? layout.tabBar + 22 : 16) + insets.bottom;
   const padding = {
     paddingHorizontal: padded ? 20 : 0,
-    paddingTop: Math.max(insets.top, 12),
+    paddingTop: logo ? 0 : Math.max(insets.top, 12),
     paddingBottom: bottomGap,
   };
 
   return (
-    <View style={[styles.root, { backgroundColor: hasSky ? colors.void : 'transparent' }]}>
-      {hasSky ? <SkyBackground /> : null}
-      <View style={[styles.frame, style]}>
+    <View
+      style={[
+        styles.root,
+        {
+          backgroundColor: hasSky ? colors.void : 'transparent',
+          opacity: focused ? 1 : 0,
+          pointerEvents: focused ? 'auto' : 'none',
+        },
+      ]}
+    >
+      {hasSky ? <SkyBackground meteors={meteors} /> : null}
+      <View style={[styles.frame, backdrop ? styles.stage : null, style]}>
+        {backdrop}
+        {logo ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Space Explorer"
+            onPress={() => router.replace('/')}
+            style={{ marginTop: Math.max(insets.top, 12) }}
+          >
+            <Image
+              source={require('../../../assets/images/SpaceExplorerMark.png')}
+              style={styles.logo}
+              contentFit="contain"
+            />
+          </Pressable>
+        ) : null}
         {scroll ? (
           <ScrollView
+            style={styles.scroller}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[padding, contentContainerStyle]}
             refreshControl={refreshControl}
@@ -82,28 +114,27 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     overflow: 'hidden',
   },
-  nebulaA: {
-    position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    top: -40,
-    right: -60,
-  },
-  nebulaB: {
-    position: 'absolute',
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    bottom: 80,
-    left: -80,
-  },
   frame: {
     flex: 1,
     width: '100%',
     maxWidth: Platform.OS === 'web' ? layout.phone : undefined,
+    minHeight: 0,
+  },
+  scroller: {
+    flex: 1,
+    minHeight: 0,
+  },
+  stage: {
+    overflow: 'hidden',
   },
   fill: {
     flex: 1,
+  },
+  logo: {
+    width: 132,
+    aspectRatio: 274 / 85,
+    alignSelf: 'flex-start',
+    marginLeft: 20,
+    marginBottom: 36,
   },
 });

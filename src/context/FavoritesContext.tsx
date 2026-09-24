@@ -14,6 +14,20 @@ import {
 } from 'react';
 
 const FAVORITES_STORAGE_KEY = '@space_explorer/favorites';
+export type SavedNotice = 'saved' | 'removed';
+
+const savedListeners = new Set<(notice: SavedNotice) => void>();
+
+export function subscribeSaved(listener: (notice: SavedNotice) => void) {
+  savedListeners.add(listener);
+  return () => {
+    savedListeners.delete(listener);
+  };
+}
+
+function notifySaved(notice: SavedNotice) {
+  savedListeners.forEach((listener) => listener(notice));
+}
 const SEEDED_IDS = ['2026-09-11', '2026-08-12'];
 
 function seededItems(): SpaceItem[] {
@@ -151,13 +165,15 @@ function createFavoritesStore(): FavoritesStore {
         });
     },
     toggleFavorite: (item: SpaceItem) => {
-      if (!state.hydrated) return;
+      requestId += 1;
       const exists = state.favoriteIds.has(item.id);
       const nextItems = exists ? state.items.filter((fav) => fav.id !== item.id) : [item, ...state.items];
       setState({
         items: nextItems,
         favoriteIds: new Set(nextItems.map((fav) => fav.id)),
+        hydrated: true,
       });
+      notifySaved(exists ? 'removed' : 'saved');
       AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(nextItems)).catch(() => {});
     },
   };

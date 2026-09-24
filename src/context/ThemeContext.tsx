@@ -14,7 +14,7 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function isThemeMode(value: string | null): value is ThemeMode {
-  return value === 'dark' || value === 'light';
+  return value === 'dark';
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -39,8 +39,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setMode = useCallback((next: ThemeMode) => {
-    setModeState(next);
-    AsyncStorage.setItem(THEME_STORAGE_KEY, next).catch(() => {});
+    if (next !== 'dark') return;
+    setModeState('dark');
+    AsyncStorage.setItem(THEME_STORAGE_KEY, 'dark').catch(() => {});
   }, []);
 
   const value = useMemo(

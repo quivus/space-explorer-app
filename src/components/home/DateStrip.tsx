@@ -1,10 +1,9 @@
 import { Type } from '@/components/ui/Type';
 import { useApod } from '@/context/ApodContext';
 import { useTheme } from '@/context/ThemeContext';
-import { radius } from '@/theme';
-import { SpaceItem } from '@/types/space';
-import { formatShortDate } from '@/utils/dates';
+import { previewUrl, SpaceItem } from '@/types/space';
 import { detailsHref } from '@/utils/navigation';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -14,58 +13,50 @@ export function DateStrip({ activeId, items: propItems }: { activeId?: string; i
   const items = propItems && propItems.length > 0 ? propItems : apodItems;
 
   return (
-    <View>
-      <View style={styles.head}>
-        <Type variant="micro">Browse by date</Type>
-        <View style={[styles.rule, { backgroundColor: colors.hairline }]} />
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-        {items.map((item) => {
-          const active = item.id === activeId;
-          return (
-            <Pressable
-              key={item.id}
-              onPress={() => router.push(detailsHref(item.id))}
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+      {items.map((item) => {
+        const active = item.id === activeId;
+        return (
+          <Pressable key={item.id} onPress={() => router.push(detailsHref(item.id))} style={styles.chip}>
+            <View
               style={[
-                styles.chip,
-                { borderColor: colors.hairline, backgroundColor: colors.panel },
-                active && { backgroundColor: colors.spark, borderColor: colors.spark },
+                styles.orb,
+                active && styles.orbActive,
+                { borderColor: active ? colors.star : colors.hairline, backgroundColor: colors.panelHot },
               ]}
             >
-              <Type variant="numeric" color={active ? colors.onAccent : colors.star}>
-                {formatShortDate(item.date)}
-              </Type>
-              <Type variant="micro" color={active ? colors.onAccent : colors.faint} style={{ marginTop: 4 }} numberOfLines={1}>
-                {item.category}
-              </Type>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-    </View>
+              {previewUrl(item) ? (
+                <Image source={{ uri: previewUrl(item) }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              ) : null}
+            </View>
+            <Type variant="micro" color={active ? colors.star : colors.faint} style={{ marginTop: 8 }} numberOfLines={1}>
+              {item.date.slice(5)}
+            </Type>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  rule: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-  },
   row: {
-    gap: 8,
-    paddingRight: 8,
+    gap: 16,
+    paddingRight: 12,
   },
   chip: {
-    minWidth: 86,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: radius.md,
+    width: 78,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orb: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  orbActive: {
+    borderWidth: 1.5,
   },
 });

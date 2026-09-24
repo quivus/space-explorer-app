@@ -1,5 +1,9 @@
 import { useTheme } from '@/context/ThemeContext';
-import { StyleSheet, View } from 'react-native';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Image } from 'expo-image';
+import { SymbolView, type AndroidSymbol, type SFSymbol } from 'expo-symbols';
+import light from 'expo-symbols/androidWeights/light';
+import { Platform } from 'react-native';
 
 type MarkName =
   | 'home'
@@ -16,216 +20,81 @@ type MarkName =
   | 'sun'
   | 'moon';
 
-export function Mark({ name, active = false, size = 18 }: { name: MarkName; active?: boolean; size?: number }) {
-  const { colors } = useTheme();
-  const color = active ? colors.spark : colors.star;
-  const stroke = Math.max(1.2, size / 14);
+const ICONS: Record<MarkName, { ios: SFSymbol; web: AndroidSymbol }> = {
+  home: { ios: 'house', web: 'home' },
+  gallery: { ios: 'square.grid.2x2', web: 'grid_view' },
+  search: { ios: 'magnifyingglass', web: 'search' },
+  saved: { ios: 'heart', web: 'favorite_border' },
+  share: { ios: 'square.and.arrow.up', web: 'ios_share' },
+  save: { ios: 'arrow.down.to.line', web: 'download' },
+  back: { ios: 'chevron.left', web: 'chevron_left' },
+  heart: { ios: 'heart', web: 'favorite_border' },
+  heartFill: { ios: 'heart.fill', web: 'favorite' },
+  play: { ios: 'play.fill', web: 'play_arrow' },
+  gear: { ios: 'gearshape', web: 'settings' },
+  sun: { ios: 'sun.max', web: 'light_mode' },
+  moon: { ios: 'moon', web: 'dark_mode' },
+};
 
-  if (name === 'home') {
-    return (
-      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        <View style={[styles.circle, { width: size * 0.72, height: size * 0.72, borderColor: color, borderWidth: stroke }]} />
-        <View style={[styles.dot, { backgroundColor: color, width: size * 0.18, height: size * 0.18 }]} />
-      </View>
-    );
-  }
+const HEART =
+  'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z';
 
-  if (name === 'gallery') {
-    return (
-      <View style={{ width: size, height: size, flexDirection: 'row', flexWrap: 'wrap', gap: size * 0.14, padding: size * 0.08 }}>
-        {[0, 1, 2, 3].map((key) => (
-          <View key={key} style={{ width: size * 0.28, height: size * 0.28, borderWidth: stroke, borderColor: color, borderRadius: 2 }} />
-        ))}
-      </View>
-    );
-  }
+const FILLED: Partial<Record<MarkName, string>> = {
+  home: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+  gallery: 'M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z',
+  search:
+    'M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
+  saved: HEART,
+  heartFill: HEART,
+};
 
-  if (name === 'search') {
-    return (
-      <View style={{ width: size, height: size }}>
-        <View style={{ width: size * 0.62, height: size * 0.62, borderRadius: 99, borderWidth: stroke, borderColor: color }} />
-        <View
-          style={{
-            position: 'absolute',
-            right: 0,
-            bottom: 1,
-            width: size * 0.42,
-            height: stroke + 0.5,
-            backgroundColor: color,
-            transform: [{ rotate: '42deg' }],
-          }}
-        />
-      </View>
-    );
-  }
+const HEART_RED = '#E10600';
 
-  if (name === 'saved' || name === 'heart' || name === 'heartFill') {
-    const filled = name === 'heartFill' || (name === 'saved' && active);
-    return (
-      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        <View
-          style={{
-            width: size * 0.58,
-            height: size * 0.58,
-            borderWidth: stroke,
-            borderColor: filled ? colors.gold : color,
-            backgroundColor: filled ? colors.gold : 'transparent',
-            transform: [{ rotate: '45deg' }],
-            borderRadius: 2,
-          }}
-        />
-      </View>
-    );
-  }
+const GLYPHS: Partial<Record<MarkName, { idle: 'home-outline' | 'view-grid-outline' | 'magnify' | 'heart-outline'; on: 'home' | 'view-grid' | 'magnify' | 'heart' }>> = {
+  home: { idle: 'home-outline', on: 'home' },
+  gallery: { idle: 'view-grid-outline', on: 'view-grid' },
+  search: { idle: 'magnify', on: 'magnify' },
+  saved: { idle: 'heart-outline', on: 'heart' },
+  heart: { idle: 'heart-outline', on: 'heart' },
+  heartFill: { idle: 'heart', on: 'heart' },
+};
 
-  if (name === 'share') {
-    return (
-      <View style={{ width: size, height: size, alignItems: 'center' }}>
-        <View style={{ width: stroke + 0.4, height: size * 0.55, backgroundColor: color, marginTop: 1 }} />
-        <View
-          style={{
-            position: 'absolute',
-            top: 1,
-            width: size * 0.42,
-            height: size * 0.42,
-            borderLeftWidth: stroke,
-            borderTopWidth: stroke,
-            borderColor: color,
-            transform: [{ rotate: '45deg' }],
-          }}
-        />
-        <View style={{ width: size * 0.7, height: size * 0.28, borderWidth: stroke, borderTopWidth: 0, borderColor: color, marginTop: 2 }} />
-      </View>
-    );
-  }
-
-  if (name === 'save') {
-    return (
-      <View style={{ width: size, height: size, alignItems: 'center' }}>
-        <View style={{ width: stroke + 0.4, height: size * 0.52, backgroundColor: color }} />
-        <View
-          style={{
-            position: 'absolute',
-            bottom: size * 0.22,
-            width: size * 0.42,
-            height: size * 0.42,
-            borderLeftWidth: stroke,
-            borderBottomWidth: stroke,
-            borderColor: color,
-            transform: [{ rotate: '-45deg' }],
-          }}
-        />
-        <View style={{ width: size * 0.72, height: stroke + 0.4, backgroundColor: color, marginTop: 4 }} />
-      </View>
-    );
-  }
-
-  if (name === 'gear') {
-    return (
-      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ width: size * 0.42, height: size * 0.42, borderRadius: 99, borderWidth: stroke, borderColor: color }} />
-        {[0, 45, 90, 135].map((deg) => (
-          <View
-            key={deg}
-            style={{
-              position: 'absolute',
-              width: stroke + 0.4,
-              height: size,
-              backgroundColor: color,
-              transform: [{ rotate: `${deg}deg` }],
-              opacity: 0.9,
-            }}
-          />
-        ))}
-        <View style={{ position: 'absolute', width: size * 0.28, height: size * 0.28, borderRadius: 99, backgroundColor: 'transparent' }} />
-      </View>
-    );
-  }
-
-  if (name === 'sun') {
-    return (
-      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        {[0, 45, 90, 135].map((deg) => (
-          <View
-            key={deg}
-            style={{
-              position: 'absolute',
-              width: stroke,
-              height: size,
-              backgroundColor: color,
-              transform: [{ rotate: `${deg}deg` }],
-              opacity: 0.7,
-            }}
-          />
-        ))}
-        <View style={{ width: size * 0.42, height: size * 0.42, borderRadius: 99, backgroundColor: color }} />
-      </View>
-    );
-  }
-
-  if (name === 'moon') {
-    return (
-      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ width: size * 0.72, height: size * 0.72, borderRadius: 99, backgroundColor: color }} />
-        <View
-          style={{
-            position: 'absolute',
-            right: size * 0.08,
-            top: size * 0.1,
-            width: size * 0.5,
-            height: size * 0.5,
-            borderRadius: 99,
-            backgroundColor: colors.void,
-          }}
-        />
-      </View>
-    );
-  }
-
-  if (name === 'back') {
-    return (
-      <View style={{ width: size, height: size, justifyContent: 'center' }}>
-        <View
-          style={{
-            width: size * 0.48,
-            height: size * 0.48,
-            borderLeftWidth: stroke,
-            borderBottomWidth: stroke,
-            borderColor: color,
-            transform: [{ rotate: '45deg' }],
-            marginLeft: size * 0.28,
-          }}
-        />
-      </View>
-    );
-  }
-
-  return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <View
-        style={{
-          width: 0,
-          height: 0,
-          borderLeftWidth: size * 0.22,
-          borderRightWidth: 0,
-          borderTopWidth: size * 0.16,
-          borderBottomWidth: size * 0.16,
-          borderLeftColor: color,
-          borderTopColor: 'transparent',
-          borderBottomColor: 'transparent',
-          marginLeft: 3,
-        }}
-      />
-    </View>
-  );
+function filledSvg(path: string, color: string) {
+  const xml = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="${color}" d="${path}"/></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(xml)}`;
 }
 
-const styles = StyleSheet.create({
-  circle: {
-    borderRadius: 99,
-    position: 'absolute',
-  },
-  dot: {
-    borderRadius: 99,
-  },
-});
+export function Mark({ name, active = false, size = 18 }: { name: MarkName; active?: boolean; size?: number }) {
+  const { colors } = useTheme();
+  const solid = name === 'heartFill' || (active && FILLED[name]);
+  const path = FILLED[name];
+
+  const tint = name === 'heartFill' ? HEART_RED : colors.star;
+
+  const glyph = GLYPHS[name];
+  if (glyph && (Platform.OS !== 'web' || solid)) {
+    return <MaterialCommunityIcons name={solid ? glyph.on : glyph.idle} size={size} color={tint} />;
+  }
+
+  if (Platform.OS === 'web' && solid && path) {
+    return (
+      <Image
+        source={{ uri: filledSvg(path, tint) }}
+        style={{ width: size, height: size }}
+        contentFit="contain"
+        accessibilityElementsHidden
+      />
+    );
+  }
+
+  const icon = ICONS[name];
+  return (
+    <SymbolView
+      name={{ ios: icon.ios, android: icon.web, web: icon.web }}
+      size={size}
+      tintColor={tint}
+      weight={{ ios: 'light', android: light }}
+      style={{ width: size, height: size }}
+    />
+  );
+}

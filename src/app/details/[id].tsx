@@ -1,5 +1,7 @@
-import { Hairline, IconButton, Toast } from '@/components/ui/Chrome';
+import { Toast } from '@/components/ui/Chrome';
+import { GlassPress } from '@/components/ui/GlassPress';
 import { Mark } from '@/components/ui/Marks';
+import { paragraphsOf, Prose } from '@/components/ui/Prose';
 import { Screen } from '@/components/ui/Screen';
 import { Type } from '@/components/ui/Type';
 import { useApod } from '@/context/ApodContext';
@@ -7,16 +9,14 @@ import { useFavorites } from '@/context/FavoritesContext';
 import { useTheme } from '@/context/ThemeContext';
 import { getById } from '@/data/catalog';
 import { fetchApodByDate, getCachedApodItems } from '@/services/apod';
-import { radius } from '@/theme';
 import { detailImageUrl, SpaceItem } from '@/types/space';
-import { formatHudDate } from '@/utils/dates';
+import { formatHudDate, formatShortDate } from '@/utils/dates';
 import { detailsHref } from '@/utils/navigation';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Share, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 export default function DetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,6 +26,7 @@ export default function DetailsScreen() {
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const { items: favoriteItems, hydrated: favoritesHydrated, error: favoritesError, isFavorite, toggleFavorite } = useFavorites();
   const { colors } = useTheme();
+  const { height: windowHeight } = useWindowDimensions();
   const [notice, setNotice] = useState<string | null>(null);
 
   const catalogItem = id ? getById(id) : undefined;
@@ -108,109 +109,143 @@ export default function DetailsScreen() {
 
   const kept = isFavorite(item.id);
   const { prev, next } = getNeighbors(item.id);
+  const plate = Math.min(280, Math.max(220, windowHeight * 0.34));
 
   return (
-    <Screen tabInset={false} scroll padded={false}>
-      <View style={{ paddingHorizontal: 20, paddingRight: 56 }}>
-        <BackBar />
-        <View style={styles.kicker}>
-          <Type variant="micro" color={colors.gold}>
-            NASA · {formatHudDate(item.date)}
-          </Type>
-          <Type variant="micro">{item.mediaType}</Type>
-        </View>
-        <Type variant="headline" style={{ marginTop: 12 }}>
+    <Screen tabInset={false} scroll settings={false} contentContainerStyle={{ paddingTop: 8 }}>
+      <View style={styles.topBar}>
+        <Pressable onPress={goBack} accessibilityRole="button" accessibilityLabel="Close" style={styles.iconHit}>
+          <Mark name="back" size={18} />
+        </Pressable>
+        <Type variant="title" numberOfLines={1} style={styles.topTitle}>
           {item.title}
         </Type>
-      </View>
-
-      <View style={[styles.stage, { backgroundColor: colors.panelHot }]}>
-        <Image source={{ uri: detailImageUrl(item) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={350} />
-        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.45)']} style={styles.stageFade} />
-        {item.mediaType === 'video' ? (
-          <Pressable
-            onPress={handleOpenVideo}
-            style={[styles.playBadge, { backgroundColor: 'rgba(0,0,0,0.65)', borderColor: colors.gold }]}
-            accessibilityRole="button"
-            accessibilityLabel="Play Video"
-          >
-            <Mark name="play" size={20} active />
-            <Type variant="micro" color={colors.gold} style={{ marginLeft: 6 }}>
-              Watch Video
-            </Type>
-          </Pressable>
-        ) : null}
-        <View style={[styles.stageHud, { borderColor: colors.hairline }]}>
-          <Type variant="micro" color="#F4F7FF">
-            {item.category} · {item.credit}
-          </Type>
-        </View>
-      </View>
-
-      <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
         <View style={styles.tools}>
-          <IconButton label={kept ? 'Kept' : 'Keep'} active={kept} onPress={() => toggleFavorite(item)}>
-            <Mark name={kept ? 'heartFill' : 'heart'} active={kept} size={16} />
-          </IconButton>
-          <IconButton label="Share" onPress={handleShare}>
-            <Mark name="share" size={16} />
-          </IconButton>
-          {item.mediaType === 'video' ? (
-            <IconButton label="Watch" onPress={handleOpenVideo}>
-              <Mark name="play" size={16} active />
-            </IconButton>
-          ) : (
-            <IconButton
-              label="Saved"
-              onPress={() => setNotice('Image marked as saved to your collection.')}
-            >
-              <Mark name="save" size={16} />
-            </IconButton>
-          )}
-        </View>
-
-        {notice ? <Toast message={notice} /> : null}
-
-        <Hairline style={{ marginVertical: 18 }} />
-
-        <Type variant="micro" style={{ marginBottom: 12 }}>
-          Credit · {item.credit}
-        </Type>
-        <Type variant="body" color={colors.star} style={{ lineHeight: 24 }}>
-          {item.explanation}
-        </Type>
-
-        <View style={styles.adjacent}>
-          {prev ? (
-            <Pressable
-              onPress={() => router.replace(detailsHref(prev.id))}
-              style={[styles.adjBtn, { borderColor: colors.hairline, backgroundColor: colors.panel }]}
-            >
-              <Type variant="micro">Previous</Type>
-              <Type variant="numeric" style={{ marginTop: 6 }} numberOfLines={2}>
-                {prev.title}
-              </Type>
-            </Pressable>
-          ) : (
-            <View style={styles.adjBtn} />
-          )}
-          {next ? (
-            <Pressable
-              onPress={() => router.replace(detailsHref(next.id))}
-              style={[styles.adjBtn, { borderColor: colors.hairline, backgroundColor: colors.panel }]}
-            >
-              <Type variant="micro">Following</Type>
-              <Type variant="numeric" style={{ marginTop: 6 }} numberOfLines={2}>
-                {next.title}
-              </Type>
-            </Pressable>
-          ) : (
-            <View style={styles.adjBtn} />
-          )}
+          <Pressable onPress={handleShare} accessibilityRole="button" accessibilityLabel="Share" style={styles.iconHit}>
+            <Mark name="share" size={18} />
+          </Pressable>
+          <Pressable
+            onPress={() => toggleFavorite(item)}
+            accessibilityRole="button"
+            accessibilityLabel={kept ? 'Remove saved' : 'Save'}
+            style={styles.iconHit}
+          >
+            <Mark name={kept ? 'heartFill' : 'heart'} active={kept} size={20} />
+          </Pressable>
         </View>
       </View>
+
+      <View style={styles.heroBlock}>
+        <View style={[styles.hero, { width: plate, height: plate, backgroundColor: colors.panelHot, borderColor: colors.hairline }]}>
+          {detailImageUrl(item) ? (
+            <Image source={{ uri: detailImageUrl(item) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={350} />
+          ) : null}
+          {item.mediaType === 'video' ? (
+            <Pressable onPress={handleOpenVideo} accessibilityRole="button" accessibilityLabel="Play Video" style={styles.watchPill}>
+              <Mark name="play" size={16} />
+            </Pressable>
+          ) : null}
+        </View>
+        <Type variant="headline" numberOfLines={3} style={styles.heroTitle}>
+          {item.title}
+        </Type>
+        <View style={styles.stats}>
+          <Stat label="Date" value={formatShortDate(item.date)} />
+          <Stat label="Field" value={cap(item.category)} />
+        </View>
+      </View>
+
+      <View style={[styles.about, { backgroundColor: colors.panel, borderColor: colors.hairline }]}>
+        <Type variant="micro">About</Type>
+        <Type variant="micro" color={colors.gold} style={{ marginTop: 8 }}>
+          {item.credit}
+        </Type>
+        <Explanation key={item.id} text={item.explanation} />
+        <Type variant="micro" color={colors.faint} style={{ marginTop: 12 }}>
+          {formatHudDate(item.date)}
+        </Type>
+      </View>
+      {notice ? <Toast message={notice} /> : null}
+
+      {prev || next ? (
+        <View style={styles.thumbs}>
+          {prev ? <Neighbor item={prev} /> : <View style={styles.thumbSlot} />}
+          {next ? <Neighbor item={next} /> : <View style={styles.thumbSlot} />}
+        </View>
+      ) : null}
     </Screen>
   );
+}
+
+function shortPassage(text: string): { preview: string; canExpand: boolean } {
+  const paragraphs = paragraphsOf(text);
+  const first = paragraphs[0] ?? text.trim();
+  const sentences = first.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const preview = sentences.length > 2 && first.length > 220 ? sentences.slice(0, 2).join(' ') : first;
+  const full = paragraphs.join(' ');
+  return { preview, canExpand: preview.length < full.length };
+}
+
+function Explanation({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const { preview, canExpand } = shortPassage(text);
+
+  return (
+    <View>
+      <Prose text={open ? text : preview} style={{ marginTop: 10 }} />
+      {canExpand ? (
+        <Pressable
+          onPress={() => setOpen((value) => !value)}
+          accessibilityRole="button"
+          accessibilityLabel={open ? 'Show less' : 'Show more'}
+          hitSlop={8}
+          style={styles.more}
+        >
+          <Type variant="title" style={styles.moreLabel}>
+            {open ? 'Show less' : 'Show more'}
+          </Type>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function cap(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.stat}>
+      <Type variant="micro">{label}</Type>
+      <Type variant="title" numberOfLines={1} style={styles.statValue}>
+        {value}
+      </Type>
+    </View>
+  );
+}
+
+function Neighbor({ item }: { item: SpaceItem }) {
+  const { colors } = useTheme();
+  return (
+    <GlassPress
+      onPress={() => router.replace(detailsHref(item.id))}
+      style={styles.thumbSlot}
+      accessibilityLabel={item.title}
+      radius={18}
+    >
+      <View style={[styles.thumb, { backgroundColor: colors.panelHot, borderColor: colors.hairline }]}>
+        {detailImageUrl(item) ? (
+          <Image source={{ uri: detailImageUrl(item) }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : null}
+      </View>
+    </GlassPress>
+  );
+}
+
+function goBack() {
+  if (router.canGoBack()) router.back();
+  else router.replace('/home');
 }
 
 function isCatalogItem(item: SpaceItem | undefined, catalogItem: SpaceItem | undefined): boolean {
@@ -233,7 +268,7 @@ function isCatalogItem(item: SpaceItem | undefined, catalogItem: SpaceItem | und
 function BackBar() {
   const { colors } = useTheme();
   return (
-    <Pressable onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel="Close">
+    <Pressable onPress={goBack} style={styles.back} accessibilityRole="button" accessibilityLabel="Close">
       <Mark name="back" size={16} />
       <Type variant="micro" color={colors.star}>
         Close
@@ -243,61 +278,96 @@ function BackBar() {
 }
 
 const styles = StyleSheet.create({
-  kicker: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  stage: {
-    marginTop: 18,
-    height: 300,
-    marginHorizontal: 20,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-  },
-  stageFade: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 80,
-  },
-  playBadge: {
-    position: 'absolute',
-    top: '40%',
-    alignSelf: 'center',
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    zIndex: 10,
+    marginBottom: 8,
+    gap: 8,
   },
-  stageHud: {
-    position: 'absolute',
-    left: 14,
-    bottom: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: 'rgba(0,0,0,0.62)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radius.full,
+  topTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 15,
   },
   tools: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
   },
-  adjacent: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 28,
+  iconHit: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  adjBtn: {
-    flex: 1,
+  heroBlock: {
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  hero: {
+    borderRadius: 999,
+    overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 14,
-    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroTitle: {
+    marginTop: 22,
+    textAlign: 'center',
+    fontSize: 28,
+    lineHeight: 32,
+  },
+  stats: {
+    flexDirection: 'row',
+    alignSelf: 'stretch',
+    marginTop: 22,
+  },
+  stat: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  statValue: {
+    textAlign: 'center',
+    fontSize: 15,
+  },
+  about: {
+    marginTop: 28,
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 18,
+  },
+  more: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+  },
+  moreLabel: {
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  thumbs: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginTop: 22,
+  },
+  thumbSlot: {
+    width: 72,
+    alignItems: 'center',
+  },
+  thumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  watchPill: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
   back: {
     flexDirection: 'row',

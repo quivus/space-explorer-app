@@ -1,11 +1,11 @@
-import { CATALOG, TODAY } from '@/data/catalog';
+import { CATALOG } from '@/data/catalog';
 import { fetchRecentApod, getCachedApodItems } from '@/services/apod';
 import { SpaceItem } from '@/types/space';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 type ApodContextValue = {
   items: SpaceItem[];
-  today: SpaceItem;
+  today?: SpaceItem;
   recents: SpaceItem[];
   loading: boolean;
   refreshing: boolean;
@@ -20,7 +20,7 @@ type ApodContextValue = {
 const ApodContext = createContext<ApodContextValue | null>(null);
 
 export function ApodProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<SpaceItem[]>(CATALOG);
+  const [items, setItems] = useState<SpaceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isFallback, setIsFallback] = useState(false);
@@ -37,7 +37,7 @@ export function ApodProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const result = await fetchRecentApod(10);
+      const result = await fetchRecentApod(30);
       setItems(result.items);
       setIsFallback(result.isFallback);
       setIsRateLimited(result.isRateLimited);
@@ -85,7 +85,7 @@ export function ApodProvider({ children }: { children: ReactNode }) {
     [items],
   );
 
-  const today = useMemo(() => items[0] ?? TODAY, [items]);
+  const today = useMemo(() => items[0], [items]);
   const recents = useMemo(() => items.slice(1, 8), [items]);
 
   const value = useMemo(

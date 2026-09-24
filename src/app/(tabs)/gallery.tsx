@@ -1,12 +1,15 @@
+import { CategoryRail } from '@/components/navigation/CategoryRail';
 import { SpaceCard } from '@/components/media/SpaceCard';
-import { Pill } from '@/components/ui/Chrome';
+import { GlassPress } from '@/components/ui/GlassPress';
 import { Screen } from '@/components/ui/Screen';
 import { Type } from '@/components/ui/Type';
 import { useApod } from '@/context/ApodContext';
-import { CATALOG } from '@/data/catalog';
 import { useTheme } from '@/context/ThemeContext';
+import { SOLAR_PLANETS, type SolarPlanet } from '@/data/planets';
 import { CategoryFilter, SpaceItem } from '@/types/space';
-import { useMemo, useState } from 'react';
+import { Image } from 'expo-image';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 
 const FILTERS: { id: CategoryFilter; label: string }[] = [
@@ -18,106 +21,135 @@ const FILTERS: { id: CategoryFilter; label: string }[] = [
   { id: 'moon', label: 'Moon' },
 ];
 
-export default function GalleryScreen() {
-  const { colors } = useTheme();
-  const { items: liveItems } = useApod();
-  const [filter, setFilter] = useState<CategoryFilter>('all');
+const LIVE_FILTERS = new Set<CategoryFilter>(['all', 'galaxy', 'nebula', 'planet', 'earth', 'moon']);
 
-  const allItems = useMemo(() => {
-    const map = new Map<string, SpaceItem>();
-    liveItems.forEach((item) => map.set(item.id, item));
-    CATALOG.forEach((item) => {
-      if (!map.has(item.id)) map.set(item.id, item);
-    });
-    return Array.from(map.values());
-  }, [liveItems]);
+export default function GalleryScreen() {
+  const { items: liveItems } = useApod();
+  const params = useLocalSearchParams<{ filter?: string; at?: string }>();
+  const [filter, setFilter] = useState<CategoryFilter>('all');
+  const seen = useRef('');
+
+  useEffect(() => {
+    const next = params.filter;
+    if (next && LIVE_FILTERS.has(next as CategoryFilter) && params.at && params.at !== seen.current) {
+      seen.current = params.at;
+      setFilter(next as CategoryFilter);
+    }
+  }, [params.filter, params.at]);
+
+  const allItems = liveItems;
 
   const visible = useMemo(
     () => allItems.filter((item) => filter === 'all' || item.category === filter),
     [allItems, filter],
   );
-  const rows = useMemo(() => {
-    const next: SpaceItem[][] = [];
-    for (let index = 0; index < visible.length; index += 2) next.push(visible.slice(index, index + 2));
-    return next;
-  }, [visible]);
-
   const header = (
-    <View>
-      <View style={{ paddingRight: 36 }}>
-        <Type variant="micro" color={colors.gold}>
-          Gallery
-        </Type>
-        <Type variant="headline" style={{ marginTop: 10 }}>
-          A constellation of plates.
-        </Type>
-      </View>
-      <Type variant="body" style={{ marginTop: 10, marginBottom: 18 }}>
-        Staggered NASA stills. Tap a tile for credit, story, and save actions.
-      </Type>
-
-      <View style={styles.row}>
-        {FILTERS.map((item) => (
-          <Pill key={item.id} label={item.label} active={filter === item.id} onPress={() => setFilter(item.id)} />
-        ))}
-      </View>
-    </View>
+    <CategoryRail
+      items={FILTERS}
+      value={filter}
+      pinFirst
+      onChange={(id) => setFilter(id as CategoryFilter)}
+    />
   );
 
   return (
     <Screen hasSky={false}>
-      <FlatList
-        data={rows}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        keyExtractor={(row) => row.map((item) => item.id).join(':')}
-        renderItem={({ item: row, index: rowIndex }) => (
-          <View style={styles.columns}>
-            {row.map((item, columnIndex) => {
-              const itemIndex = rowIndex * 2 + columnIndex;
-              const tall = itemIndex % 4 === 0 || itemIndex % 4 === 3;
-              return (
-                <View key={item.id} style={styles.col}>
-                  <SpaceCard item={item} layout="tile" height={tall ? 210 : 150} />
-                </View>
-              );
-            })}
-            {row.length === 1 ? <View style={styles.col} /> : null}
-          </View>
-        )}
-        ItemSeparatorComponent={<View style={styles.separator} />}
-        ListHeaderComponent={header}
-        initialNumToRender={4}
-        maxToRenderPerBatch={4}
-        windowSize={5}
-        showsVerticalScrollIndicator={false}
-      />
+      <View style={styles.rail}>{header}</View>
+      {filter === 'planet' ? (
+        <FlatList
+          data={SOLAR_PLANETS}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          keyExtractor={(item) => item.name}
+          renderItem={({ item }) => <PlanetCard planet={item} />}
+          ItemSeparatorComponent={RowSeparator}
+          showsVerticalScrollIndicator={false}
+        />
+      ) : (
+        <FlatList
+          key={filter}
+          data={visible}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <SpaceCard item={item} layout="plate" heart={false} />}
+          ItemSeparatorComponent={RowSeparator}
+          initialNumToRender={4}
+          maxToRenderPerBatch={4}
+          windowSize={5}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </Screen>
   );
 }
 
+function PlanetCard({ planet }: { planet: SolarPlanet }) {
+  const { colors } = useTheme();
+  return (
+    <GlassPress
+      accessibilityLabel={planet.name}
+      onPress={() => router.push(`/planet/${planet.name}`)}
+      radius={28}
+      style={styles.planet}
+    >
+      <View style={[styles.planetPhoto, { backgroundColor: colors.panelHot }]}>
+        <Image source={{ uri: planet.image }} style={StyleSheet.absoluteFill} contentFit="contain" />
+      </View>
+      <View style={styles.planetCopy}>
+        <Type variant="title">{planet.name}</Type>
+        <Type variant="title" color={colors.muted}>
+          {planet.distance}
+        </Type>
+      </View>
+    </GlassPress>
+  );
+}
+
+function RowSeparator() {
+  return <View style={styles.separator} />;
+}
+
 const styles = StyleSheet.create({
+  rail: {
+    marginBottom: 8,
+  },
   list: {
     flex: 1,
   },
   listContent: {
     paddingBottom: 8,
   },
-  row: {
+  title: {
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  planet: {
+    gap: 12,
+  },
+  planetPhoto: {
+    width: '72%',
+    maxWidth: 260,
+    aspectRatio: 1,
+    alignSelf: 'center',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  planetCopy: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 18,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
   },
   columns: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
     alignItems: 'flex-start',
   },
   col: {
     flex: 1,
   },
   separator: {
-    height: 8,
+    height: 22,
   },
 });
